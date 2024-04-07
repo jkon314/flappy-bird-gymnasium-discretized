@@ -96,7 +96,7 @@ class FlappyBirdEnv(gymnasium.Env):
 
     def __init__(
         self,
-        screen_size: Tuple[int, int] = (288, 512),
+        screen_size: Tuple[int, int] = (290, 510), #edited from (288,512) for divisibility
         audio_on: bool = False,
         normalize_obs: bool = True,
         use_lidar: bool = True,
@@ -130,7 +130,7 @@ class FlappyBirdEnv(gymnasium.Env):
                 )
             else:
                 self.observation_space = gymnasium.spaces.Box(
-                    -np.inf, np.inf, shape=(12,), dtype=np.float64
+                    -np.inf, np.inf, shape=(12,), dtype=np.float64 # return and edit these to match new observation space
                 )
 
         self._screen_width = screen_size[0]
@@ -146,7 +146,7 @@ class FlappyBirdEnv(gymnasium.Env):
         self._pipe_color = pipe_color
         self._bg_type = background
 
-        self._ground = {"x": 0, "y": self._screen_height * 0.79}
+        self._ground = {"x": 0, "y": self._screen_height * 0.80}
         self._base_shift = BASE_WIDTH - BACKGROUND_WIDTH
 
         if use_lidar:
@@ -361,13 +361,13 @@ class FlappyBirdEnv(gymnasium.Env):
 
         # List of upper pipes:
         self._upper_pipes = [
-            {"x": self._screen_width, "y": new_pipe1[0]["y"]},
+            {"x": self._screen_width + 2, "y": new_pipe1[0]["y"]},
             {
-                "x": self._screen_width + (self._screen_width / 2),
+                "x": self._screen_width + (self._screen_width / 2)+1,
                 "y": new_pipe2[0]["y"],
             },
             {
-                "x": self._screen_width + self._screen_width,
+                "x": self._screen_width + self._screen_width+2,
                 "y": new_pipe3[0]["y"],
             },
         ]
@@ -417,11 +417,12 @@ class FlappyBirdEnv(gymnasium.Env):
         """Returns a randomly generated pipe."""
         # y of gap between upper and lower pipe
         gapYs = [20, 30, 40, 50, 60, 70, 80, 90]
+        #gapYs = [40] #removing possible combinations to make problem less intractible for PI AND VI
         index = self.np_random.integers(0, len(gapYs))
         gap_y = gapYs[index]
         gap_y += int(self._ground["y"] * 0.2)
 
-        pipe_x = self._screen_width + PIPE_WIDTH + (self._screen_width * 0.2)
+        pipe_x = self._screen_width + PIPE_WIDTH + (self._screen_width * 0.2) 
         return [
             {"x": pipe_x, "y": gap_y - PIPE_HEIGHT},  # upper pipe
             {"x": pipe_x, "y": gap_y + self._pipe_gap},  # lower pipe
@@ -503,22 +504,35 @@ class FlappyBirdEnv(gymnasium.Env):
             pos_y /= self._screen_height
             vel_y /= PLAYER_MAX_VEL_Y
             rot /= 90
-
+        #the following will observe only the next relevant pipe, once past a pipe, look to next
+        if ( pipes[0][0] - 58) < -PLAYER_WIDTH:
+            pipe2Return = 1
+        else:
+            pipe2Return = 0
+        
         return (
             np.array(
                 [
-                    pipes[0][0],  # the last pipe's horizontal position
-                    pipes[0][1],  # the last top pipe's vertical position
-                    pipes[0][2],  # the last bottom pipe's vertical position
-                    pipes[1][0],  # the next pipe's horizontal position
-                    pipes[1][1],  # the next top pipe's vertical position
-                    pipes[1][2],  # the next bottom pipe's vertical position
-                    pipes[2][0],  # the next next pipe's horizontal position
-                    pipes[2][1],  # the next next top pipe's vertical position
-                    pipes[2][2],  # the next next bottom pipe's vertical position
+                    
+                    #pipes[0][0],  # the last pipe's horizontal position
+                    #pipes[0][1],  # the last top pipe's vertical position
+                    #pipes[0][2],  # the last bottom pipe's vertical position
+                    #pipes[1][0],  # the next pipe's horizontal position
+                    #pipes[1][1],  # the next top pipe's vertical position
+                    #pipes[1][2],  # the next bottom pipe's vertical position
+                    #pipes[2][0],  # the next next pipe's horizontal position
+                    #pipes[2][1],  # the next next top pipe's vertical position
+                    #pipes[2][2],  # the next next bottom pipe's vertical position
+
+
+                    # my observations
+                    
+                    pipes[pipe2Return][0] - 58, #distance to upcoming pipe horizontally, player is locked around x = 58
+                    (pipes[pipe2Return][1] - pipes[pipe2Return][2])//2, #y pos of gap between pipes
+                   
                     pos_y,  # player's vertical position
                     vel_y,  # player's vertical velocity
-                    rot,  # player's rotation
+                    #rot,  # player's rotation #do not return so I can use more readily with PI and VI
                 ]
             ),
             None,
